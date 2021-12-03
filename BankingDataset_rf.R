@@ -86,29 +86,50 @@ print(mtry)
 set.seed(71)
 rf <-randomForest(y~.,data=banking_df_train, mtry=6, importance=TRUE, ntree=500)
 print(rf)
-#Evaluate variable importance
+
+#Evaluation, Prediction and Calculate Performance Metrics
+
+#importance of the variables in order
 importance(rf)
 varImpPlot(rf)
 
-#Evaluation, Prediction and Calculate Performance Metrics
+# Plot the RF Model
+plot(rf)
+
+# Partial Plot the RF model and its dependence on age
+partialPlot(x=rf, pred.data=banking_df_train, x.var=age, which.class = "yes")
+
+#Prediction
 pred1=predict(rf,type = "prob")
+head(pred1)
 
 #install.packages("ROCR")
 library(ROCR)
+library(gmodels)
+library(pROC)
 perf = prediction(pred1[,2], banking_df_train$y)
 perf
+
 # 1. Area under curve
-auc = performance(perf, "auc")
+auc = performance(perf, measure="auc")
 auc
 
 # 2. True Positive and Negative Rate
 pred3 = performance(perf, "tpr","fpr")
-pred3
+plot(pred3,col=rainbow(10))
 
 # 3. Plot the ROC curve
 plot(pred3,main="ROC Curve for Bank Data Random Forest",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 
+
+pred2 <- data.frame(pred1)
+head(pred2)
+pred2_roc <- roc(pred4, pred2$yes)
+
+auc(pred3)
+
+plot(pred_test_roc)
 
 # 4 Confusion Matrix 
 
@@ -121,14 +142,13 @@ confusionMatrix(pred4,y_outcome)
 table(y_outcome, pred4)
 
 
-# shows a very low error rate
-plot(rf)
-
-
 #5 Classification Error
 rf$confusion
 
 
-#5 Mean Squared Error
+#5 Accuracy
+cm = table(pred4, y_outcome)
+cm
 
-
+accuracy = (sum(diag(cm)))/sum(cm)
+accuracy*100

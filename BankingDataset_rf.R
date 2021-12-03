@@ -27,7 +27,9 @@ library(mlbench)
 library(gmodels)
 library(class)
 library(randomForest)
+install.packages("ROCR")
 library(ROCR)
+library(pROC)
 #########################################set working directory#############################################
 current_path <- getActiveDocumentContext()$path
 setwd(dirname(current_path))
@@ -53,7 +55,6 @@ hist(banking_df$age, main="Banking Dataset Marketing Targets", xlab= "Customer A
 #Random Forrest start
 ############################################
 ### Convert characterr as a factor ,Ensure that Class is categorical
-library(dplyr)
 banking_df <- banking_df %>% 
   mutate_if(is.character, as.factor)
 str(banking_df)
@@ -103,10 +104,7 @@ partialPlot(x=rf, pred.data=banking_df_train, x.var=age, which.class = "yes")
 pred1=predict(rf,type = "prob")
 head(pred1)
 
-#install.packages("ROCR")
-library(ROCR)
-library(gmodels)
-library(pROC)
+#create a performance prediction
 perf = prediction(pred1[,2], banking_df_train$y)
 perf
 
@@ -122,14 +120,6 @@ plot(pred3,col=rainbow(10))
 plot(pred3,main="ROC Curve for Bank Data Random Forest",col=2,lwd=2)
 abline(a=0,b=1,lwd=2,lty=2,col="gray")
 
-
-pred2 <- data.frame(pred1)
-head(pred2)
-pred2_roc <- roc(pred4, pred2$yes)
-
-auc(pred3)
-
-plot(pred_test_roc)
 
 # 4 Confusion Matrix 
 
@@ -152,3 +142,11 @@ cm
 
 accuracy = (sum(diag(cm)))/sum(cm)
 accuracy*100
+
+#### Test 
+
+pred2 <- data.frame(pred1)
+head(pred2)
+pred2_roc <- roc(pred4, pred2$yes)
+
+plot(pred_test_roc)

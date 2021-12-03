@@ -1,0 +1,135 @@
+library(gvlma)
+library(olsrr)
+library(ggplot2)
+library(zoo)
+library(randomForest)
+library(dplyr)
+library(ggthemes)
+library(scales)
+library(mice)
+library(Amelia)
+library(olsrr)
+library(ISLR) 
+library(rstudioapi) 
+library(ggpubr)
+library(corrplot)
+library(caret)
+library(Rsampling)
+library(datasets)
+library(NLP)
+library(tm)
+library(class)
+library(gmodels)
+library(mltools)
+library(data.table)
+library(tidyverse)
+library(mlbench)
+library(gmodels)
+library(class)
+library(randomForest)
+library(ROCR)
+#########################################set working directory#############################################
+current_path <- getActiveDocumentContext()$path
+setwd(dirname(current_path))
+###########################################################################################################
+#Banking Data Set for Marketing Campaigns https://www.kaggle.com/prakharrathi25/banking-dataset-marketing-targets
+
+#First we load the Loans Dataset of a Dummy Bank
+bankingdata <- read.csv("train.csv", stringsAsFactors = TRUE, header= TRUE, na.strings=c("?"), sep = ";")
+banking_df <- as.data.frame(bankingdata)
+str(banking_df)
+head(banking_df)
+
+# identify missing data
+missmap(banking_df, main = "Banking Missing values vs observed")
+#summary of the entire dataset
+summary(banking_df)
+
+#histogram of the loan data
+hist(banking_df$duration, main="Banking Dataset Marketing Targets", xlab= "Duration since last contact", col="orange")
+hist(banking_df$age, main="Banking Dataset Marketing Targets", xlab= "Customer Age Distribution", col="orange")
+
+############################################
+#Random Forrest start
+############################################
+### Convert characterr as a factor ,Ensure that Class is categorical
+library(dplyr)
+banking_df <- banking_df %>% 
+  mutate_if(is.character, as.factor)
+str(banking_df)
+dim(banking_df)
+###############################################
+
+# Make dependent variable as a factor (categorical)
+#our target dependent variable is "y" with yes and no values
+banking_df$y = as.factor(banking_df$y)
+class(banking_df$y)
+
+set.seed(71)
+rf <-randomForest(y~.,data=banking_df, ntree=500) 
+print(rf)
+#Note : If a dependent variable is a factor, classification is assumed, otherwise regression is assumed. If omitted, randomForest will run in unsupervised mode.
+#The number of variables selected at each split is denoted by mtry in randomforest function.
+
+#Step III : Find the optimal mtry value
+floor(sqrt(ncol(banking_df) - 1))
+mtry <- tuneRF(banking_df[-17],banking_df$y, ntreeTry=500, stepFactor=1.5, improve=0.01, trace=TRUE, plot=TRUE, doBest=TRUE)
+print(mtry)
+
+#find the best mtry value
+best.m <- mtry[mtry[,3] == min(mtry[, 2]), 1]
+
+print(best.m)
+
+#####Build model again using best mtry value which is 6 in our case
+set.seed(71)
+rf <-randomForest(y~.,data=banking_df, mtry=6, importance=TRUE, ntree=500)
+print(rf)
+#Evaluate variable importance
+importance(rf)
+varImpPlot(rf)
+
+#Evaluation, Prediction and Calculate Performance Metrics
+pred1=predict(rf,type = "prob")
+#install.packages("ROCR")
+library(ROCR)
+perf = prediction(pred1[,2], banking_df$y)
+perf
+# 1. Area under curve
+auc = performance(perf, "auc")
+auc
+
+# 2. True Positive and Negative Rate
+pred3 = performance(perf, "tpr","fpr")
+pred3
+
+# 3. Plot the ROC curve
+plot(pred3,main="ROC Curve for Bank Data Random Forest",col=2,lwd=2)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+
+
+# 4 Confusion Matrix 
+#get 75% of data randomly [test set split]
+index <- sample(1:nrow(banking_df), nrow(banking_df) * .75, replace=FALSE)
+
+#split in test / train
+banking_df_train <- banking_df[index, ]
+banking_df_test <- banking_df[-index, ] #-index = complementary set to index
+y_outcome <- banking_df_train$y
+
+#predict
+pred4 = predict(rf, banking_df_train)
+
+# a confusion matrix shows "train" banking data accuracy is 100%
+confusionMatrix(pred4,y_outcome)
+
+table(y_outcome, pred4)
+# shows a very low error rate
+plot(rf)
+
+
+#5 Mean Squared Error
+library(sklearn.metrics)
+mean_squared_error(pred4,y_outcome)
+
+
